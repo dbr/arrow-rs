@@ -69,8 +69,8 @@ jobs:
   # test the crate
   linux-test:
     name: Test Workspace on ${{ matrix.arch }} Rust ${{ matrix.rust }}
-    needs: [build-lib]
-    runs-on: ${{ matrix.os }}
+    needs: [linux-build-lib]
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         arch: [amd64]
@@ -91,13 +91,13 @@ jobs:
         uses: actions/cache@v2
         with:
           path: /github/home/.cargo
-          # this key equals the ones on `build-lib` for re-use
+          # this key equals the ones on `linux-build-lib` for re-use
           key: cargo-cache-
       - name: Cache Rust dependencies
         uses: actions/cache@v2
         with:
           path: /github/home/target
-          # this key equals the ones on `build-lib` for re-use
+          # this key equals the ones on `linux-build-lib` for re-use
           key: ${{ runner.os }}-${{ matrix.arch }}-target-cache-${{ matrix.rust }}
       - name: Setup Rust toolchain
         run: |
@@ -120,9 +120,36 @@ jobs:
           cargo run --example read_csv
           cargo run --example read_csv_infer_schema
 
+  windows-and-macos:
+    name: Test on ${{ matrix.os }} Rust ${{ matrix.rust }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+        rust: [stable, 1.53]
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: true
+      # TODO: this won't cache anything, which is expensive. Setup this action
+      # with a OS-dependent path.
+      - name: Setup Rust toolchain
+        run: |
+          rustup toolchain install ${{ matrix.rust }}
+          rustup default ${{ matrix.rust }}
+          rustup component add rustfmt
+      - name: Run tests
+        shell: bash
+        run: |
+          export ARROW_TEST_DATA=$(pwd)/testing/data
+          export PARQUET_TEST_DATA=$(pwd)/parquet-testing/data
+          # do not produce debug symbols to keep memory usage down
+          export RUSTFLAGS="-C debuginfo=0"
+          cargo test
+
   clippy:
     name: Clippy
-    needs: [build-lib]
+    needs: [linux-build-lib]
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -142,13 +169,13 @@ jobs:
         uses: actions/cache@v2
         with:
           path: /github/home/.cargo
-          # this key equals the ones on `build-lib` for re-use
+          # this key equals the ones on `linux-build-lib` for re-use
           key: cargo-cache-
       - name: Cache Rust dependencies
         uses: actions/cache@v2
         with:
           path: /github/home/target
-          # this key equals the ones on `build-lib` for re-use
+          # this key equals the ones on `linux-build-lib` for re-use
           key: ${{ runner.os }}-${{ matrix.arch }}-target-cache-${{ matrix.rust }}
       - name: Setup Rust toolchain
         run: |
@@ -234,13 +261,13 @@ jobs:
         uses: actions/cache@v2
         with:
           path: /github/home/.cargo
-          # this key equals the ones on `build-lib` for re-use
+          # this key equals the ones on `linux-build-lib` for re-use
           key: cargo-cache-
       - name: Cache Rust dependencies
         uses: actions/cache@v2
         with:
           path: /github/home/target
-          # this key equals the ones on `build-lib` for re-use
+          # this key equals the ones on `linux-build-lib` for re-use
           key: ${{ runner.os }}-${{ matrix.arch }}-target-cache-${{ matrix.rust }}
       - name: Setup Rust toolchain
         run: |
